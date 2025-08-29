@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Add Student - SMS{% endblock %}
+
+{% block content %}
+<h2>Add a New Student</h2>
+<form method="POST">
+    <label>Name:</label><br>
+    <input type="text" name="name" required><br><br>
+
+    <label>Course:</label><br>
+    <input type="text" name="course" required><br><br>
+
+    <label>Grade:</label><br>
+    <input type="text" name="grade" required><br><br>
+
+    <input type="submit" value="Add Student">
+</form>
+{% endblock %}

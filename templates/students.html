@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Students - SMS{% endblock %}
+
+{% block content %}
+<h2>List of Students</h2>
+<ul>
+    {% for student in students %}
+        <li>{{ student.name }} - {{ student.course }} - Grade: {{ student.grade }}</li>
+    {% else %}
+        <p>No students added yet.</p>
+    {% endfor %}
+</ul>
+{% endblock %}
