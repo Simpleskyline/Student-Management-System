@@ -2,6 +2,8 @@
 
 A simple **Student Management System** built with **Python (Flask)** that allows administrators, teachers, and students to manage academic records efficiently.  
 
+**I am currently in the development phase and feel free to make your improvement suggestions on the code**
+
 ---
 
 ## 🚀 Features
