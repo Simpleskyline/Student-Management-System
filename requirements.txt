@@ -1,7 +1,26 @@
 Flask==3.0.3
-Flask-Login==0.6.3
-Flask-SQLAlchemy==3.1.1
 Werkzeug==3.0.3
+
+# Authentication & security
+Flask-Login==0.6.3
 Flask-Bcrypt==1.0.1
+
+# Forms
 Flask-WTF==1.2.1
 WTForms==3.1.2
+email-validator==2.2.0   # needed for Email() validator
+
+# Database
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.32        # pinned to match Flask-SQLAlchemy
+
+# Migrations (optional but highly recommended)
+Flask-Migrate==4.0.7
+
+# Template & utilities
+Jinja2==3.1.4
+itsdangerous==2.2.0
+click==8.1.7
+
+# For development
+python-dotenv==1.0.1
