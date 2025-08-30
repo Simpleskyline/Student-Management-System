@@ -1,111 +1,136 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask import Flask, render_template, redirect, url_for, request, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"  # required for session & flash
+app.config['SECRET_KEY'] = 'secret-key'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sms.db'
+db = SQLAlchemy(app)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-# ======================
-# Flask-Login Setup
-# ======================
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
 
-# Fake "users DB" for now
-users = {
-    "admin@example.com": {"password": "1234", "username": "Admin"}
-}
+# ----------------------------
+# MODELS
+# ----------------------------
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    username = db.Column(db.String(150), nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default="student")
 
-# User class for Flask-Login
-class User(UserMixin):
-    def __init__(self, id, username):
-        self.id = id
-        self.username = username
+class Student(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    age = db.Column(db.Integer, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    # Normally we'd fetch from DB, here just fake user
-    for email, data in users.items():
-        if email == user_id:
-            return User(id=email, username=data["username"])
-    return None
+    return User.query.get(int(user_id))
 
-# ======================
-# Routes
-# ======================
-students = []
+
+# ----------------------------
+# ROUTES
+# ----------------------------
 
 @app.route('/')
-def index():
-    return render_template('index.html', students=students)
+def home():
+    return redirect(url_for('login'))
 
-@app.route('/students')
-def student_list():
-    return render_template('students.html', students=students)
 
+# REGISTER
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # You’d normally save to DB here
     if request.method == "POST":
-        email = request.form["email"]
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        role = request.form.get("role", "student")
 
-        users[email] = {"username": username, "password": password}
-        flash("Account created! Please log in.", "success")
+        user = User(username=username, email=email, password=password, role=role)
+        db.session.add(user)
+        db.session.commit()
+        flash("Account created! You can now log in.", "success")
         return redirect(url_for("login"))
-
     return render_template("register.html")
 
+
+# LOGIN
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == "POST":
-        email = request.form["email"]
-        password = request.form["password"]
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-        user_data = users.get(email)
-        if user_data and user_data["password"] == password:
-            user = User(id=email, username=user_data["username"])
+        user = User.query.filter_by(email=email, password=password).first()
+        if user:
             login_user(user)
-            flash("Logged in successfully!", "success")
             return redirect(url_for("dashboard"))
         else:
-            flash("Invalid credentials!", "danger")
-
+            flash("Invalid login credentials", "danger")
     return render_template("login.html")
 
+
+# DASHBOARD (role-based access)
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template("dashboard.html", user=current_user)
+    if current_user.role == "admin":
+        students = Student.query.all()
+    elif current_user.role == "teacher":
+        students = Student.query.filter_by(created_by=current_user.id).all()
+    else:  # student role
+        students = []  # students can’t view list
+    return render_template("dashboard.html", user=current_user, students=students)
 
+
+# ADD STUDENT (admin & teacher only)
+@app.route('/add-student', methods=['GET', 'POST'])
+@login_required
+def add_student():
+    if current_user.role not in ["admin", "teacher"]:
+        flash("You don’t have permission to add students.", "danger")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        age = request.form.get("age")
+        new_student = Student(name=name, age=age, created_by=current_user.id)
+        db.session.add(new_student)
+        db.session.commit()
+        flash("Student added successfully!", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("add_student.html")
+
+
+# DELETE STUDENT (admin only)
+@app.route('/delete-student/<int:student_id>')
+@login_required
+def delete_student(student_id):
+    if current_user.role != "admin":
+        flash("Only admins can delete students.", "danger")
+        return redirect(url_for("dashboard"))
+
+    student = Student.query.get_or_404(student_id)
+    db.session.delete(student)
+    db.session.commit()
+    flash("Student deleted successfully!", "success")
+    return redirect(url_for("dashboard"))
+
+
+# LOGOUT
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
-    flash("You’ve been logged out.", "info")
     return redirect(url_for("login"))
 
-@app.route('/add', methods=['GET', 'POST'])
-def add_student():
-    if request.method == 'POST':
-        name = request.form['name']
-        course = request.form['course']
-        grade = request.form['grade']
 
-        students.append({
-            'name': name,
-            'course': course,
-            'grade': grade
-        })
-
-        return redirect(url_for('student_list'))
-    return render_template('add_student.html')
-
-# Make current_user always available in templates
-@app.context_processor
-def inject_user():
-    return dict(current_user=current_user)
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)

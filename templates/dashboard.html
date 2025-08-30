@@ -1,8 +1,32 @@
 {% extends "base.html" %}
-
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-    <h2>Welcome, {{ user.username }}!</h2>
-    <p>Your role: {{ user.role }}</p>
+<h2>Welcome, {{ user.username }}!</h2>
+<p>Your role: {{ user.role }}</p>
+
+{% if user.role == "admin" %}
+    <a href="{{ url_for('add_student') }}">➕ Add Student</a>
+    <h3>All Students:</h3>
+    <ul>
+        {% for student in students %}
+            <li>{{ student.name }} ({{ student.age }})
+                <a href="{{ url_for('delete_student', student_id=student.id) }}">❌ Delete</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+{% elif user.role == "teacher" %}
+    <a href="{{ url_for('add_student') }}">➕ Add Student</a>
+    <h3>Your Students:</h3>
+    <ul>
+        {% for student in students %}
+            <li>{{ student.name }} ({{ student.age }})</li>
+        {% endfor %}
+    </ul>
+
+{% else %}
+    <p>You are logged in as a student. You can only view your profile.</p>
+{% endif %}
+
 {% endblock %}
