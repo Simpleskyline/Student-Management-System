@@ -1,7 +1,14 @@
+<!-- DOCUMENT filename="index.html" -->
 {% extends "base.html" %}
-{% block title %}Home - SMS{% endblock %}
+{% block title %}Home - Student Management System{% endblock %}
 
 {% block content %}
-<h2>Welcome to the Student Management System</h2>
-<p>Use the navigation above to manage students, courses, and grades.</p>
+<div class="jumbotron text-center">
+    <h1 class="display-4">Welcome to the Student Management System</h1>
+    <p class="lead">Manage students, courses, and grades efficiently with role-based access.</p>
+    <hr class="my-4">
+    <p>If you have an account, please log in. Otherwise, register to get started.</p>
+    <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Login</a>
+    <a class="btn btn-secondary btn-lg" href="{{ url_for('register') }}" role="button">Register</a>
+</div>
 {% endblock %}
