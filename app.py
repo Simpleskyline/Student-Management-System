@@ -1,19 +1,18 @@
 # DOCUMENT filename="app.py"
 import os
 from flask import Flask, render_template, redirect, url_for, request, flash
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy #provides a toolkit for interacting with relational databases eg:SQLite
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
-from flask_bcrypt import Bcrypt
-from flask_wtf import FlaskForm
+from flask_bcrypt import Bcrypt # Provides secure password hashing
+from flask_wtf import FlaskForm # Help build secure forms with CSRF protection
 from wtforms import StringField, PasswordField, SelectField, IntegerField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length, ValidationError
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.urandom(
-    24).hex()  # Generate a random secret key for production; replace with env var in real use
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sms.db'
-db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
+app.config['SECRET_KEY'] = os.urandom(24).hex()  # Generate a random secret key for production; replace with env var in real use
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sms.db' # Specifies that the database is a SQLite file named sms.db
+db = SQLAlchemy(app) # Initializes a SQLAlchemy instance and binds it to your Flask application (app)
+bcrypt = Bcrypt(app) # Initializes a Flask-Bcrypt instance and binds it to your Flask application (app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -298,4 +297,4 @@ def logout():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5555, debug=True)
