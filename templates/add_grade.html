@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Add Grade - Student Management System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Add Grade</h2>
+    <form method="POST" class="needs-validation" novalidate>
+        {{ form.hidden_tag() }}
+        
+        <div class="mb-3">
+            {{ form.student_id.label(class="form-label") }}
+            {{ form.student_id(class="form-select") }}
+            {% if form.student_id.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.student_id.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.course_id.label(class="form-label") }}
+            {{ form.course_id(class="form-select") }}
+            {% if form.course_id.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.course_id.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.grade.label(class="form-label") }}
+            {{ form.grade(class="form-control", placeholder="Enter grade (e.g., A, B+)") }}
+            {% if form.grade.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.grade.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+    <p class="mt-3"><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+</div>
+
+<script>
+    (function () {
+        'use strict';
+        var forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}
