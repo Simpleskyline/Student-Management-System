@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+     {% block title %}Add Course - Student Management System{% endblock %}
+
+     {% block content %}
+     <div class="container mt-5">
+         <h2 class="mb-4">Add Course</h2>
+         <form method="POST" class="needs-validation" novalidate>
+             {{ form.hidden_tag() }}
+             
+             <div class="mb-3">
+                 {{ form.name.label(class="form-label") }}
+                 {{ form.name(class="form-control", placeholder="Enter course name") }}
+                 {% if form.name.errors %}
+                     <div class="invalid-feedback">
+                         {% for error in form.name.errors %}
+                             {{ error }}<br>
+                         {% endfor %}
+                     </div>
+                 {% endif %}
+             </div>
+             
+             <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+         </form>
+         <p class="mt-3"><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+     </div>
+
+     <script>
+         (function () {
+             'use strict';
+             var forms = document.querySelectorAll('.needs-validation');
+             Array.prototype.slice.call(forms).forEach(function (form) {
+                 form.addEventListener('submit', function (event) {
+                     if (!form.checkValidity()) {
+                         event.preventDefault();
+                         event.stopPropagation();
+                     }
+                     form.classList.add('was-validated');
+                 }, false);
+             });
+         })();
+     </script>
+     {% endblock %}
