@@ -31,6 +31,18 @@
             {% endif %}
         </div>
 
+        <div class="mb-3">
+            {{ form.course.label(class="form-label") }}
+            {{ form.course(class="form-control", placeholder="Select Course") }}
+            {% if form.course.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.course.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
         <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
     </form>
     <p class="mt-3"><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
