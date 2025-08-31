@@ -1,20 +1,20 @@
 import os
 import logging
+from flask_migrate import Migrate
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy  # Provides a toolkit for interacting with relational databases eg: SQLite
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_bcrypt import Bcrypt  # Provides secure password hashing
 from flask_wtf import FlaskForm  # Help build secure forms with CSRF protection
-from wtforms import StringField, PasswordField, SelectField, IntegerField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length, \
-    ValidationError  # Help validate input automatically
+from wtforms import StringField, PasswordField, SelectField, IntegerField, SubmitField, TextAreaField
+from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length, Regexp, ValidationError  # Help validate input automatically
 
 app = Flask(__name__)  # Creates application called app
-app.config['SECRET_KEY'] = os.urandom(
-    24).hex()  # Generate a random secret key for production; replace with env var in real use
+app.config['SECRET_KEY'] = os.urandom(24).hex()  # Generate a random secret key for production; replace with env var in real use
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sms.db'  # Specifies that the database is a SQLite file named sms.db
 app.config['WTF_CSRF_ENABLED'] = True  # Explicitly enable CSRF protection (default is True, but included for clarity)
 db = SQLAlchemy(app)  # Initializes a SQLAlchemy instance and binds it to your Flask application (app)
+migrate = Migrate(app, db) # Initializes migrate
 bcrypt = Bcrypt(app)  # Initializes a Flask-Bcrypt instance and binds it to your Flask application (app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -22,37 +22,40 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 # ----------------------------
-# MODELS
+# DATABASE MODELS
 # ----------------------------
+# ... (previous imports and setup remain the same)
+
+# ----------------------------
+# DATABASE MODELS
+# ----------------------------
+
 class User(UserMixin, db.Model):
-    # Columns
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), unique=True, nullable=False)
     username = db.Column(db.String(150), nullable=False)
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="student")
 
-
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     age = db.Column(db.Integer, nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)  # Optional course association
 
-
-# New models for courses and grades
-class Course(db.Model):
+class Course(db.Model):  # Ensure this class is defined
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # Teacher or admin who created the course
-
+    code = db.Column(db.String(10), nullable=False, unique=True)
+    description = db.Column(db.Text, nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 class Grade(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
-    grade = db.Column(db.String(10), nullable=False)  # e.g., 'A', 'B+', etc.
-
+    grade = db.Column(db.String(10), nullable=False)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -63,9 +66,19 @@ def load_user(user_id):
 # FORMS (for validation and CSRF protection)
 # ----------------------------
 class RegisterForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=150)])
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=15)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    password = PasswordField(
+        'Password',
+        validators=[
+            DataRequired(),
+            Length(min=8, message="Password must be at least 8 characters long."),
+            Regexp(
+                regex=r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$',
+                message="Password must include at least one uppercase, one lowercase, one number, and one special character."
+            )
+        ]
+    )
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     role = SelectField('Role', choices=[('student', 'Student'), ('teacher', 'Teacher'), ('admin', 'Admin')],
                        default='student')
@@ -86,7 +99,12 @@ class LoginForm(FlaskForm):
 class AddStudentForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(min=1, max=150)])
     age = IntegerField('Age', validators=[DataRequired(), NumberRange(min=1, message='Age must be a positive integer')])
+    course = SelectField('Course', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Add Student')
+
+    def __init__(self, *args, **kwargs):
+        super(AddStudentForm, self).__init__(*args, **kwargs)
+        self.course.choices = [(course.id, course.name) for course in Course.query.all()]  # Populate with courses
 
 
 class EditStudentForm(FlaskForm):
@@ -210,7 +228,7 @@ def add_student():
     if request.method == 'POST':
         logging.debug(f"Add student form data: {form.data}, CSRF token: {form.csrf_token.data}")
         if form.validate_on_submit():
-            new_student = Student(name=form.name.data, age=form.age.data, created_by=current_user.id)
+            new_student = Student(name=form.name.data, age=form.age.data, created_by=current_user.id, course_id=form.course.data)
             try:
                 db.session.add(new_student)
                 db.session.commit()
@@ -286,11 +304,16 @@ def add_course():
         flash("You don’t have permission to add courses.", "danger")
         return redirect(url_for("dashboard"))
 
-    form = AddCourseForm()
+    form = CourseForm()  # Use CourseForm here
     if request.method == 'POST':
         logging.debug(f"Add course form data: {form.data}, CSRF token: {form.csrf_token.data}")
         if form.validate_on_submit():
-            new_course = Course(name=form.name.data, created_by=current_user.id)
+            new_course = Course(
+                name=form.name.data,
+                code=form.code.data,
+                description=form.description.data,
+                created_by=current_user.id
+            )
             try:
                 db.session.add(new_course)
                 db.session.commit()
@@ -306,7 +329,6 @@ def add_course():
                     flash(f"Error in {form[field].label.text}: {error}", "danger")
             return render_template("add_course.html", form=form)
     return render_template("add_course.html", form=form)
-
 
 # ADD GRADE (admin & teacher only, teacher only for their students/courses)
 @app.route('/add-grade', methods=['GET', 'POST'])
