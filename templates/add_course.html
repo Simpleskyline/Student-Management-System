@@ -1,42 +1,66 @@
 {% extends "base.html" %}
-     {% block title %}Add Course - Student Management System{% endblock %}
+{% block title %}Add Course - Student Management System{% endblock %}
 
-     {% block content %}
-     <div class="container mt-5">
-         <h2 class="mb-4">Add Course</h2>
-         <form method="POST" class="needs-validation" novalidate>
-             {{ form.hidden_tag() }}
-             
-             <div class="mb-3">
-                 {{ form.name.label(class="form-label") }}
-                 {{ form.name(class="form-control", placeholder="Enter course name") }}
-                 {% if form.name.errors %}
-                     <div class="invalid-feedback">
-                         {% for error in form.name.errors %}
-                             {{ error }}<br>
-                         {% endfor %}
-                     </div>
-                 {% endif %}
-             </div>
-             
-             <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
-         </form>
-         <p class="mt-3"><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
-     </div>
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Add Course</h2>
+    <form method="POST" class="needs-validation" novalidate>
+        {{ form.hidden_tag() }}
 
-     <script>
-         (function () {
-             'use strict';
-             var forms = document.querySelectorAll('.needs-validation');
-             Array.prototype.slice.call(forms).forEach(function (form) {
-                 form.addEventListener('submit', function (event) {
-                     if (!form.checkValidity()) {
-                         event.preventDefault();
-                         event.stopPropagation();
-                     }
-                     form.classList.add('was-validated');
-                 }, false);
-             });
-         })();
-     </script>
-     {% endblock %}
+        <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control", placeholder="Enter course name") }}
+            {% if form.name.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.name.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.code.label(class="form-label") }}
+            {{ form.code(class="form-control", placeholder="Enter course code (e.g., CS101)") }}
+            {% if form.code.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.code.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control", placeholder="Enter course description (optional)", rows="4") }}
+            {% if form.description.errors %}
+                <div class="invalid-feedback">
+                    {% for error in form.description.errors %}
+                        {{ error }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+    <p class="mt-3"><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
+</div>
+
+<script>
+    (function () {
+        'use strict';
+        var forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock %}
