@@ -102,10 +102,6 @@ class AddStudentForm(FlaskForm):
     course = SelectField('Course', coerce=int, validators=[DataRequired()])
     submit = SubmitField('Add Student')
 
-    def __init__(self, *args, **kwargs):
-        super(AddStudentForm, self).__init__(*args, **kwargs)
-        self.course.choices = [(course.id, course.name) for course in Course.query.all()]  # Populate with courses
-
 
 class EditStudentForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(min=1, max=150)])
@@ -225,10 +221,24 @@ def add_student():
         return redirect(url_for("dashboard"))
 
     form = AddStudentForm()
+
+    # ✅ Populate courses dynamically inside the request
+    courses = Course.query.all()
+    form.course.choices = [(c.id, c.name) for c in courses] if courses else [(0, "No courses available")]
+
+    if form.course.choices == [(0, "No courses available")]:
+        flash("No courses available. Please add a course first.", "warning")
+        return redirect(url_for("add_course"))
+
     if request.method == 'POST':
         logging.debug(f"Add student form data: {form.data}, CSRF token: {form.csrf_token.data}")
         if form.validate_on_submit():
-            new_student = Student(name=form.name.data, age=form.age.data, created_by=current_user.id, course_id=form.course.data)
+            new_student = Student(
+                name=form.name.data,
+                age=form.age.data,
+                created_by=current_user.id,
+                course_id=form.course.data
+            )
             try:
                 db.session.add(new_student)
                 db.session.commit()
@@ -243,6 +253,7 @@ def add_student():
                 for error in errors:
                     flash(f"Error in {form[field].label.text}: {error}", "danger")
             return render_template("add_student.html", form=form)
+
     return render_template("add_student.html", form=form)
 
 
@@ -304,7 +315,7 @@ def add_course():
         flash("You don’t have permission to add courses.", "danger")
         return redirect(url_for("dashboard"))
 
-    form = CourseForm()  # Use CourseForm here
+    form = AddCourseForm()  # ✅ use the right form
     if request.method == 'POST':
         logging.debug(f"Add course form data: {form.data}, CSRF token: {form.csrf_token.data}")
         if form.validate_on_submit():
