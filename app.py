@@ -110,9 +110,10 @@ class EditStudentForm(FlaskForm):
 
 
 class AddCourseForm(FlaskForm):
-    name = StringField('Course Name', validators=[DataRequired(), Length(min=1, max=150)])
-    submit = SubmitField('Add Course')
-
+    name = StringField("Course Name", validators=[DataRequired(), Length(min=2, max=100)])
+    code = StringField("Course Code", validators=[DataRequired(), Length(min=2, max=20)])  # ✅ new field
+    description = TextAreaField("Course Description", validators=[Length(max=500)])
+    submit = SubmitField("Add Course")
 
 class AddGradeForm(FlaskForm):
     student_id = SelectField('Student', coerce=int, validators=[DataRequired()])
