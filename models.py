@@ -17,6 +17,13 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class Course(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False, unique=True)
+
+    def __repr__(self):
+        return f"<Course {self.name}>"
+
 # Student model (CRUD data)
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)

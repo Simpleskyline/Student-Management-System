@@ -1,5 +1,6 @@
 from wtforms import SelectMultipleField
 from wtforms.widgets import ListWidget, CheckboxInput
+from forms import SelectCourseForm
 
 class CourseSelectionForm(FlaskForm):
     courses = SelectMultipleField(

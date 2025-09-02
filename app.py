@@ -6,8 +6,9 @@ from flask_sqlalchemy import SQLAlchemy  # Provides a toolkit for interacting wi
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_bcrypt import Bcrypt  # Provides secure password hashing
 from flask_wtf import FlaskForm  # Help build secure forms with CSRF protection
+from models import Course  # import your Course model
 from wtforms import StringField, PasswordField, SelectField, IntegerField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length, Regexp, ValidationError  # Help validate input automatically
+from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length, Regexp, ValidationError, EqualTo  # Help validate input automatically
 
 app = Flask(__name__)  # Creates application called app
 app.config['SECRET_KEY'] = os.urandom(24).hex()  # Generate a random secret key for production; replace with env var in real use
@@ -29,6 +30,13 @@ logging.basicConfig(level=logging.DEBUG)
 # ----------------------------
 # DATABASE MODELS
 # ----------------------------
+
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=50)])
+    email = StringField('Email', validators=[DataRequired(), Email()])   # <-- ADD THIS
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Register')
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -71,9 +79,14 @@ class Grade(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
     grade = db.Column(db.String(10), nullable=False)
 
-class CourseSelectionForm(FlaskForm):
-    course = SelectField('Select Course', coerce=int)
-    submit = SubmitField('Save Course')
+class SelectCourseForm(FlaskForm):
+    course = SelectField('Select Course', validators=[DataRequired()], coerce=int)
+    submit = SubmitField('Enroll')
+
+    def __init__(self, *args, **kwargs):
+        super(SelectCourseForm, self).__init__(*args, **kwargs)
+        # populate the dropdown with available courses from the database
+        self.course.choices = [(c.id, c.name) for c in Course.query.all()]
 
 @login_manager.user_loader
 def load_user(user_id):
