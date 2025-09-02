@@ -30,12 +30,15 @@ logging.basicConfig(level=logging.DEBUG)
 # DATABASE MODELS
 # ----------------------------
 
-class User(UserMixin, db.Model):
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    username = db.Column(db.String(150), nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="student")
+    username = db.Column(db.String(150), nullable=False, unique=True)
+    email = db.Column(db.String(150), nullable=False, unique=True)
+    role = db.Column(db.String(50), nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+    # ✅ Link to student profile
+    student_profile = db.relationship('Student', uselist=False, backref='user')
 
 student_courses = db.Table(
     'student_courses',
@@ -43,12 +46,17 @@ student_courses = db.Table(
     db.Column('course_id', db.Integer, db.ForeignKey('course.id'), primary_key=True)
 )
 
+
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     age = db.Column(db.Integer, nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    courses = db.relationship('Course', secondary=student_courses, backref='students')  # ✅ many-to-many
+
+    # ✅ One-to-one course assignment
+    course_id = db.Column(db.Integer, db.ForeignKey('course.id'))
+    course = db.relationship("Course", backref="students")
+
 
 class Course(db.Model):  # Ensure this class is defined
     id = db.Column(db.Integer, primary_key=True)
@@ -62,6 +70,10 @@ class Grade(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
     course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=False)
     grade = db.Column(db.String(10), nullable=False)
+
+class CourseSelectionForm(FlaskForm):
+    course = SelectField('Select Course', coerce=int)
+    submit = SubmitField('Save Course')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -142,29 +154,35 @@ def home():
 # REGISTER
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegisterForm()
-    if request.method == 'POST':
-        logging.debug(f"Register form data: {form.data}, CSRF token: {form.csrf_token.data}")
-        if form.validate_on_submit():
-            hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-            user = User(username=form.username.data, email=form.email.data, password=hashed_password,
-                        role=form.role.data)
-            try:
-                db.session.add(user)
-                db.session.commit()
-                flash("Account created! You can now log in.", "success")
-                return redirect(url_for("login"))
-            except Exception as e:
-                db.session.rollback()
-                flash(f"Error creating account: {str(e)}", "danger")
-        else:
-            logging.debug(f"Register form validation failed: {form.errors}")
-            for field, errors in form.errors.items():
-                for error in errors:
-                    flash(f"Error in {form[field].label.text}: {error}", "danger")
-            return render_template("register.html", form=form)
-    return render_template("register.html", form=form)
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
 
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        new_user = User(
+            username=form.username.data,
+            email=form.email.data,
+            role=form.role.data,
+            password=hashed_password
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        # ✅ Automatically create Student profile if role is "student"
+        if new_user.role == "student":
+            student_profile = Student(
+                name=new_user.username,
+                age=18,  # default or placeholder, can be updated later
+                created_by=new_user.id
+            )
+            db.session.add(student_profile)
+            db.session.commit()
+
+        flash("Your account has been created! You can now log in.", "success")
+        return redirect(url_for('login'))
+
+    return render_template('register.html', form=form)
 
 # LOGIN
 @app.route('/login', methods=['GET', 'POST'])
@@ -199,24 +217,20 @@ def login():
 
 
 # DASHBOARD (role-based access)
-@app.route('/dashboard')
+@app.route("/dashboard")
 @login_required
 def dashboard():
+    # If student and no course selected → redirect to select_course
+    if current_user.role == "student":
+        if not current_user.student_profile or not current_user.student_profile.course:
+            return redirect(url_for("select_course"))
+
+    # Admin sees all students
+    students = []
     if current_user.role == "admin":
         students = Student.query.all()
-        courses = Course.query.all()
-        grades = Grade.query.all()
-    elif current_user.role == "teacher":
-        students = Student.query.filter_by(created_by=current_user.id).all()
-        courses = Course.query.filter_by(created_by=current_user.id).all()
-        grades = Grade.query.join(Student).filter(Student.created_by == current_user.id).all()
-    else:  # student role
-        students = []  # Students can’t view student list
-        courses = Course.query.all()  # Allow students to view courses
-        grades = Grade.query.filter_by(student_id=current_user.id).all() if hasattr(current_user, 'id') else []
-    logging.debug(
-        f"Dashboard for user {current_user.id} ({current_user.role}): {len(students)} students, {len(courses)} courses, {len(grades)} grades")
-    return render_template("dashboard.html", user=current_user, students=students, courses=courses, grades=grades)
+
+    return render_template("dashboard.html", user=current_user, students=students)
 
 
 # ADD STUDENT (admin & teacher only)
@@ -348,34 +362,28 @@ def add_course():
             return render_template("add_course.html", form=form)
     return render_template("add_course.html", form=form)
 
-@app.route('/select-courses', methods=['GET', 'POST'])
+@app.route('/select-course', methods=['GET', 'POST'])
 @login_required
-def select_courses():
+def select_course():
     if current_user.role != "student":
         flash("Only students can select courses.", "danger")
         return redirect(url_for("dashboard"))
 
-    form = CourseSelectionForm()
-    available_courses = Course.query.all()
-    form.courses.choices = [(c.id, c.name) for c in available_courses]
-
-    # Find the student record linked to this user (if it exists)
-    student = Student.query.filter_by(created_by=current_user.id).first()
-    if not student:
-        student = Student(name=current_user.username, age=18, created_by=current_user.id)  # default age
-        db.session.add(student)
-        db.session.commit()
-
-    if request.method == 'POST' and form.validate_on_submit():
-        selected_courses = Course.query.filter(Course.id.in_(form.courses.data)).all()
-        student.courses = selected_courses
-        db.session.commit()
-        flash("Courses updated successfully!", "success")
+    # 🚫 Prevent re-selection if already chosen
+    if current_user.student_profile and current_user.student_profile.course_id:
+        flash("You have already selected a course. Contact admin if you need changes.", "info")
         return redirect(url_for("dashboard"))
 
-    # Pre-populate with current selections
-    form.courses.data = [c.id for c in student.courses]
-    return render_template("select_courses.html", form=form)
+    form = SelectCourseForm()
+    form.course.choices = [(c.id, f"{c.name} ({c.code})") for c in Course.query.all()]
+
+    if form.validate_on_submit():
+        current_user.student_profile.course_id = form.course.data
+        db.session.commit()
+        flash("Course selected successfully!", "success")
+        return redirect(url_for("dashboard"))
+
+    return render_template("select_course.html", form=form)
 
 # ADD GRADE (admin & teacher only, teacher only for their students/courses)
 @app.route('/add-grade', methods=['GET', 'POST'])

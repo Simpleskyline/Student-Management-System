@@ -18,15 +18,14 @@
 
 {% else %}
     <p>You are logged in as a student.</p>
-    <a href="{{ url_for('select_courses') }}">📚 Select Your Courses</a>
 
-    <h3>Your Courses:</h3>
-    <ul>
-        {% for course in user.student.courses %}
-            <li>{{ course.name }} ({{ course.code }})</li>
-        {% endfor %}
-    </ul>
+    {% if user.student_profile and user.student_profile.course %}
+        <h3>Your Course:</h3>
+        <p>{{ user.student_profile.course.name }} ({{ user.student_profile.course.code }})</p>
+    {% else %}
+        <p>You have not selected a course yet.</p>
+        <a href="{{ url_for('select_course') }}">📚 Select Your Course</a>
+    {% endif %}
 {% endif %}
-
 
 {% endblock %}
