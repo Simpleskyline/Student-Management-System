@@ -16,17 +16,17 @@
         {% endfor %}
     </ul>
 
-{% elif user.role == "teacher" %}
-    <a href="{{ url_for('add_student') }}">➕ Add Student</a>
-    <h3>Your Students:</h3>
+{% else %}
+    <p>You are logged in as a student.</p>
+    <a href="{{ url_for('select_courses') }}">📚 Select Your Courses</a>
+
+    <h3>Your Courses:</h3>
     <ul>
-        {% for student in students %}
-            <li>{{ student.name }} ({{ student.age }})</li>
+        {% for course in user.student.courses %}
+            <li>{{ course.name }} ({{ course.code }})</li>
         {% endfor %}
     </ul>
-
-{% else %}
-    <p>You are logged in as a student. You can only view your profile.</p>
 {% endif %}
+
 
 {% endblock %}
