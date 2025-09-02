@@ -37,12 +37,18 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="student")
 
+student_courses = db.Table(
+    'student_courses',
+    db.Column('student_id', db.Integer, db.ForeignKey('student.id'), primary_key=True),
+    db.Column('course_id', db.Integer, db.ForeignKey('course.id'), primary_key=True)
+)
+
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     age = db.Column(db.Integer, nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
-    course_id = db.Column(db.Integer, db.ForeignKey('course.id'), nullable=True)  # Optional course association
+    courses = db.relationship('Course', secondary=student_courses, backref='students')  # ✅ many-to-many
 
 class Course(db.Model):  # Ensure this class is defined
     id = db.Column(db.Integer, primary_key=True)
