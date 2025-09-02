@@ -348,6 +348,35 @@ def add_course():
             return render_template("add_course.html", form=form)
     return render_template("add_course.html", form=form)
 
+@app.route('/select-courses', methods=['GET', 'POST'])
+@login_required
+def select_courses():
+    if current_user.role != "student":
+        flash("Only students can select courses.", "danger")
+        return redirect(url_for("dashboard"))
+
+    form = CourseSelectionForm()
+    available_courses = Course.query.all()
+    form.courses.choices = [(c.id, c.name) for c in available_courses]
+
+    # Find the student record linked to this user (if it exists)
+    student = Student.query.filter_by(created_by=current_user.id).first()
+    if not student:
+        student = Student(name=current_user.username, age=18, created_by=current_user.id)  # default age
+        db.session.add(student)
+        db.session.commit()
+
+    if request.method == 'POST' and form.validate_on_submit():
+        selected_courses = Course.query.filter(Course.id.in_(form.courses.data)).all()
+        student.courses = selected_courses
+        db.session.commit()
+        flash("Courses updated successfully!", "success")
+        return redirect(url_for("dashboard"))
+
+    # Pre-populate with current selections
+    form.courses.data = [c.id for c in student.courses]
+    return render_template("select_courses.html", form=form)
+
 # ADD GRADE (admin & teacher only, teacher only for their students/courses)
 @app.route('/add-grade', methods=['GET', 'POST'])
 @login_required
