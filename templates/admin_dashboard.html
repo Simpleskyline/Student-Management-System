@@ -1,15 +1,63 @@
-{% extends "base.html" %}
-{% block title %}Admin Dashboard{% endblock %}
-
-{% block content %}
-<div class="container mt-5">
-    <h2>⚙️ Welcome, {{ current_user.username }}!</h2>
-    <p>This is your <strong>Admin Dashboard</strong>.</p>
-    <ul>
-        <li>Manage users (students & teachers)</li>
-        <li>System settings</li>
-        <li>Generate reports</li>
-    </ul>
-    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>
+<!-- Student Register -->
+<div class="card shadow-sm mt-4">
+  <div class="card-body">
+    <h5 class="card-title mb-3">🎓 Registered Students</h5>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Courses Enrolled</th>
+            <th>Grades Recorded</th>
+            <th>Status</th>
+            <th>Admin Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin_view_student', student_id=s.id) }}" class="text-decoration-none">
+                  {{ s.username }}
+                </a>
+              </td>
+              <td>{{ s.email }}</td>
+              <td><span class="badge bg-info">{{ s.courses }}</span></td>
+              <td><span class="badge bg-warning">{{ s.grades }}</span></td>
+              <td>
+                {% if s.active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('admin_change_role', user_id=s.id) }}" class="d-inline">
+                  {{ csrf_token() }}
+                  <input type="hidden" name="role" value="student">
+                  <button class="btn btn-sm btn-outline-primary">Keep as Student</button>
+                </form>
+                {% if s.active %}
+                  <form method="POST" action="{{ url_for('admin_deactivate_user', user_id=s.id) }}" class="d-inline">
+                    {{ csrf_token() }}
+                    <button class="btn btn-sm btn-outline-danger">Deactivate</button>
+                  </form>
+                {% else %}
+                  <form method="POST" action="{{ url_for('admin_activate_user', user_id=s.id) }}" class="d-inline">
+                    {{ csrf_token() }}
+                    <button class="btn btn-sm btn-outline-success">Activate</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-muted">No students registered yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
-{% endblock %}

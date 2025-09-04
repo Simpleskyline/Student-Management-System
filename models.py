@@ -24,6 +24,28 @@ class Course(db.Model):
     def __repr__(self):
         return f"<Course {self.name}>"
 
+class Enrollment(db.Model):
+    __tablename__ = "enrollment"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey("course.id"), nullable=False)
+    enrolled_at = db.Column(db.DateTime, default=db.func.now())
+
+    user = db.relationship("User", backref="enrollments")
+    course = db.relationship("Course", backref="enrollments")
+
+
+class Grade(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey("course.id"), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    score = db.Column(db.Float, nullable=False)
+    out_of = db.Column(db.Float, nullable=False)
+
+    user = db.relationship("User", backref="grades")
+    course = db.relationship("Course", backref="grades")
+
 # Student model (CRUD data)
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
