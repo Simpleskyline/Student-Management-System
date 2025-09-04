@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Student Profile - {{ student.username }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h3>🎓 Student Profile: {{ student.username }}</h3>
+    <p>Email: <strong>{{ student.email }}</strong></p>
+    <p>Status:
+        {% if student.active %}
+            <span class="badge bg-success">Active</span>
+        {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+    </p>
+
+    {% if profile %}
+        <p>Full Name: {{ profile.name }}</p>
+        <p>Age: {{ profile.age }}</p>
+    {% endif %}
+
+    <hr>
+
+    <!-- Enrolled Courses -->
+    <h5>📚 Enrolled Courses</h5>
+    <div class="table-responsive mb-4">
+        <table class="table table-striped">
+            <thead><tr><th>Code</th><th>Title</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for c in courses %}
+                    <tr>
+                        <td>{{ c.code }}</td>
+                        <td>{{ c.title }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if c.active else 'secondary' }}">
+                                {{ 'Active' if c.active else 'Completed' }}
+                            </span>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3" class="text-muted">No courses enrolled.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Grades -->
+    <h5>📈 Grades</h5>
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered">
+            <thead><tr><th>Course</th><th>Assessment</th><th>Score</th><th>Out of</th></tr></thead>
+            <tbody>
+                {% for g in grades %}
+                    <tr>
+                        <td>{{ g.course_code }}</td>
+                        <td>{{ g.title }}</td>
+                        <td>{{ g.score }}</td>
+                        <td>{{ g.out_of }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4" class="text-muted">No grades recorded.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Admin Actions -->
+    <h5>⚙️ Admin Actions</h5>
+    <form method="POST" action="{{ url_for('admin_change_role', user_id=student.id) }}" class="mb-2 d-inline">
+        {{ csrf_token() }}
+        <select name="role" class="form-select form-select-sm d-inline w-auto">
+            <option value="student" selected>Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary">Change Role</button>
+    </form>
+
+    {% if student.active %}
+        <form method="POST" action="{{ url_for('admin_deactivate_user', user_id=student.id) }}" class="d-inline">
+            {{ csrf_token() }}
+            <button class="btn btn-sm btn-outline-danger">Deactivate</button>
+        </form>
+    {% else %}
+        <form method="POST" action="{{ url_for('admin_activate_user', user_id=student.id) }}" class="d-inline">
+            {{ csrf_token() }}
+            <button class="btn btn-sm btn-outline-success">Activate</button>
+        </form>
+    {% endif %}
+
+    <div class="mt-3">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">⬅ Back to Admin Dashboard</a>
+    </div>
+</div>
+{% endblock %}
