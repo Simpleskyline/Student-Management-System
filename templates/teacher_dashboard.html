@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>👨‍🏫 Welcome, {{ current_user.username }}!</h2>
+    <p>This is your <strong>Teacher Dashboard</strong>.</p>
+    <ul>
+        <li>Manage student grades</li>
+        <li>Upload assignments</li>
+        <li>View class performance</li>
+    </ul>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>
+</div>
+{% endblock %}

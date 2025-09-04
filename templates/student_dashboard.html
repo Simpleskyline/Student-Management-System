@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>🎓 Welcome, {{ current_user.username }}!</h2>
+    <p>This is your <strong>Student Dashboard</strong>.</p>
+    <ul>
+        <li>View your profile</li>
+        <li>Check enrolled courses</li>
+        <li>See grades & progress</li>
+    </ul>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>
+</div>
+{% endblock %}
