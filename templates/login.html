@@ -8,16 +8,17 @@
         {{ form.hidden_tag() }}
 
         <div class="mb-3">
-            {{ form.email.label(class="form-label") }}
-            {{ form.email(class="form-control", placeholder="Enter your email") }}
-            {% if form.email.errors %}
-                <div class="invalid-feedback">
-                    {% for error in form.email.errors %}
-                        {{ error }}<br>
-                    {% endfor %}
-                </div>
-            {% endif %}
+    {{ form.identifier.label(class="form-label") }}
+    {{ form.identifier(class="form-control", placeholder="Enter your email or username") }}
+    {% if form.identifier.errors %}
+        <div class="invalid-feedback">
+            {% for error in form.identifier.errors %}
+                {{ error }}<br>
+            {% endfor %}
         </div>
+    {% endif %}
+</div>
+
 
         <div class="mb-3">
             {{ form.password.label(class="form-label") }}
