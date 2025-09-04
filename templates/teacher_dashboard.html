@@ -1,15 +1,96 @@
 {% extends "base.html" %}
 {% block title %}Teacher Dashboard{% endblock %}
-
 {% block content %}
-<div class="container mt-5">
-    <h2>👨‍🏫 Welcome, {{ current_user.username }}!</h2>
-    <p>This is your <strong>Teacher Dashboard</strong>.</p>
-    <ul>
-        <li>Manage student grades</li>
-        <li>Upload assignments</li>
-        <li>View class performance</li>
-    </ul>
-    <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>👨‍🏫 Teacher Panel</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignmentModal">Create Assignment</button>
+  </div>
+
+  <div class="row g-4">
+    <!-- Your Courses -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">📚 Your Courses</h5>
+          <div class="list-group">
+            {% for c in my_courses %}
+              <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                 href="{{ url_for('teacher_course', course_id=c.id) }}">
+                <span>{{ c.code }} — {{ c.title }}</span>
+                <span class="badge bg-secondary">{{ c.enrollment_count }} students</span>
+              </a>
+            {% else %}
+              <div class="text-muted">No courses assigned yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Submissions -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">📝 Recent Submissions</h5>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead class="table-light">
+                <tr><th>Student</th><th>Course</th><th>Assignment</th><th>Submitted</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {% for s in recent_submissions %}
+                  <tr>
+                    <td>{{ s.student_name }}</td>
+                    <td>{{ s.course_code }}</td>
+                    <td>{{ s.assignment_title }}</td>
+                    <td>{{ s.submitted_at.strftime('%Y-%m-%d') }}</td>
+                    <td>
+                      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('teacher_grade_submission', submission_id=s.id) }}">Grade</a>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="5" class="text-muted">No recent submissions.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <a href="{{ url_for('teacher_submissions') }}" class="btn btn-link p-0">View all submissions →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Assignment Modal -->
+<div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('teacher_create_assignment') }}" class="modal-content">
+      {{ csrf_token() }}
+      <div class="modal-header">
+        <h5 class="modal-title">Create Assignment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Course</label>
+        <select name="course_id" class="form-select" required>
+          <option value="" disabled selected>Select course…</option>
+          {% for c in my_courses %}
+            <option value="{{ c.id }}">{{ c.code }} — {{ c.title }}</option>
+          {% endfor %}
+        </select>
+        <label class="form-label mt-3">Title</label>
+        <input name="title" class="form-control" placeholder="e.g. Midterm Project" required />
+        <label class="form-label mt-3">Due Date</label>
+        <input type="date" name="due_date" class="form-control" required />
+        <label class="form-label mt-3">Instructions</label>
+        <textarea name="instructions" class="form-control" rows="4" placeholder="Write assignment instructions…"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+        <button class="btn btn-primary" type="submit">Create</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}
