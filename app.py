@@ -2,8 +2,9 @@ import os
 import logging
 from flask_migrate import Migrate
 from flask import Flask, render_template, redirect, url_for, request, flash
-from flask_sqlalchemy import SQLAlchemy# Provides a toolkit for interacting with relational databases eg: SQLite
-from sqlalchemy import func
+from functools import wraps
+from flask import abort
+from flask_sqlalchemy import SQLAlchemy# Provides a toolkit for interacting with relational databases eg: SQLite from sqlalchemy import func
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_bcrypt import Bcrypt  # Provides secure password hashing
 from flask_wtf import FlaskForm  # Help build secure forms with CSRF protection
@@ -22,11 +23,6 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 logging.basicConfig(level=logging.DEBUG)
 
-
-# ----------------------------
-# DATABASE MODELS
-# ----------------------------
-# ... (previous imports and setup remain the same)
 
 # ----------------------------
 # DATABASE MODELS
@@ -252,23 +248,48 @@ def login():
 
     return render_template("login.html", form=form)
 
+def role_required(*roles):
+    """Restrict access to specific roles"""
+    def wrapper(fn):
+        @wraps(fn)
+        @login_required
+        def decorated_view(*args, **kwargs):
+            if current_user.role not in roles:
+                abort(403)  # Forbidden
+            return fn(*args, **kwargs)
+        return decorated_view
+    return wrapper
 
 # DASHBOARD (role-based access)
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    # If student and no course selected → redirect to select_course
+    # Redirect based on role
     if current_user.role == "student":
-        if not current_user.student_profile or not current_user.student_profile.course:
-            return redirect(url_for("select_course"))
+        return redirect(url_for("student_dashboard"))
+    elif current_user.role == "teacher":
+        return redirect(url_for("teacher_dashboard"))
+    elif current_user.role == "admin":
+        return redirect(url_for("admin_dashboard"))
+    else:
+        # fallback if role is missing
+        flash("Invalid role or role not assigned.", "danger")
+        return redirect(url_for("logout"))
 
-    # Admin sees all students
-    students = []
-    if current_user.role == "admin":
-        students = Student.query.all()
+@app.route("/student/dashboard")
+@role_required("student")
+def student_dashboard():
+    return render_template("student_dashboard.html")
 
-    return render_template("dashboard.html", user=current_user, students=students)
+@app.route("/teacher/dashboard")
+@role_required("teacher")
+def teacher_dashboard():
+    return render_template("teacher_dashboard.html")
 
+@app.route("/admin/dashboard")
+@role_required("admin")
+def admin_dashboard():
+    return render_template("admin_dashboard.html")
 
 # ADD STUDENT (admin & teacher only)
 @app.route('/add-student', methods=['GET', 'POST'])
@@ -489,6 +510,9 @@ def add_grade():
             return render_template("add_grade.html", form=form)
     return render_template("add_grade.html", form=form)
 
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template("403.html"), 403
 
 # LOGOUT
 @app.route('/logout')
