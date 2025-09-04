@@ -2,12 +2,13 @@ import os
 import logging
 from flask_migrate import Migrate
 from flask import Flask, render_template, redirect, url_for, request, flash
-from flask_sqlalchemy import SQLAlchemy  # Provides a toolkit for interacting with relational databases eg: SQLite
+from flask_sqlalchemy import SQLAlchemy# Provides a toolkit for interacting with relational databases eg: SQLite
+from sqlalchemy import func
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from flask_bcrypt import Bcrypt  # Provides secure password hashing
 from flask_wtf import FlaskForm  # Help build secure forms with CSRF protection
 from models import Course  # import your Course model
-from wtforms import StringField, PasswordField, SelectField, IntegerField, SubmitField, TextAreaField
+from wtforms import StringField, PasswordField, SelectField, IntegerField, SubmitField, TextAreaField, BooleanField
 from wtforms.validators import DataRequired, Email, EqualTo, NumberRange, Length, Regexp, ValidationError, EqualTo  # Help validate input automatically
 
 app = Flask(__name__)  # Creates application called app
@@ -36,7 +37,9 @@ class RegistrationForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])   # <-- ADD THIS
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    role = SelectField("Role", choices=[("student", "Student"), ("teacher", "Teacher"), ("admin", "Admin")], validators=[DataRequired()])
     submit = SubmitField('Register')
+
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -122,10 +125,10 @@ class RegisterForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
-
+    identifier = StringField("Email or Username", validators=[DataRequired(), Length(min=3, max=100)])
+    password = PasswordField("Password", validators=[DataRequired()])
+    remember = BooleanField("Remember Me")
+    submit = SubmitField("Login")
 
 class AddStudentForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(min=1, max=150)])
@@ -172,6 +175,19 @@ def register():
 
     form = RegistrationForm()
     if form.validate_on_submit():
+        # ✅ Check if username already exists
+        existing_user = User.query.filter_by(username=form.username.data).first()
+        if existing_user:
+            flash("⚠️ Username already exists. Please choose another one.", "danger")
+            return render_template('register.html', form=form)
+
+        # ✅ Check if email already exists
+        existing_email = User.query.filter_by(email=form.email.data).first()
+        if existing_email:
+            flash("⚠️ Email already registered. Please log in instead.", "danger")
+            return render_template('register.html', form=form)
+
+        # ✅ If both unique, proceed with registration
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         new_user = User(
             username=form.username.data,
@@ -192,23 +208,30 @@ def register():
             db.session.add(student_profile)
             db.session.commit()
 
-        flash("Your account has been created! You can now log in.", "success")
+        flash("✅ Your account has been created! You can now log in.", "success")
         return redirect(url_for('login'))
 
     return render_template('register.html', form=form)
 
 # LOGIN
+from sqlalchemy import func
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if request.method == 'POST':
         logging.debug(f"Login form data: {form.data}, CSRF token: {form.csrf_token.data}")
         if form.validate_on_submit():
-            user = User.query.filter_by(email=form.email.data).first()
+            # ✅ Try to find user by email OR username (case-insensitive)
+            user = User.query.filter(
+                (func.lower(User.email) == func.lower(form.identifier.data)) |
+                (func.lower(User.username) == func.lower(form.identifier.data))
+            ).first()
+
             if user:
                 try:
                     if bcrypt.check_password_hash(user.password, form.password.data):
-                        login_user(user)
+                        login_user(user, remember=form.remember.data)
                         logging.debug(f"Login successful for user: {user.email}")
                         return redirect(url_for("dashboard"))
                     else:
@@ -219,13 +242,14 @@ def login():
                     flash(f"Authentication error: {str(e)}", "danger")
             else:
                 logging.debug("User not found")
-                flash("No account found with that email", "danger")
+                flash("No account found with that email/username", "danger")
         else:
             logging.debug(f"Login form validation failed: {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
                     flash(f"Error in {form[field].label.text}: {error}", "danger")
             return render_template("login.html", form=form)
+
     return render_template("login.html", form=form)
 
 
